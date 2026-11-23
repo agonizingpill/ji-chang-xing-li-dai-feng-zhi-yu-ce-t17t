@@ -73,3 +73,18 @@ docker compose down -v --remove-orphans
 - 峰值班组保障验收
 - 拥堵复盘对外交接
 - 波次发布与保障看板
+
+## 机动班组撞峰调度
+
+登录后打开页面右下角「机动班组调度」，可登记机动班组、按航站楼查看每十分钟档的缺口与派工去向，主管在弹窗内确认派工。
+
+口径与接口：
+
+- **档起点**：从末次采样所在十分钟档的下一档起，按预测结果的 `predicted_next_4` 展开 4 个连续十分钟档。
+- **缺口**：每档缺口 = 预测件数 − 本波已确认保障量（已确认机动派工 + 已确认人员班次容量，班次沿用 `capacity×10` 件口径）。
+- **派工规则**：同航站楼内每档把可用机动班组先派给缺口最大的波次；同一班组在同一档只派一处（数据库有部分唯一索引兜底），跨档可复用，已在本档确认的班组对所有撞峰波次全局屏蔽。
+- **上游更新失效**：worker 写回新预测后自动按航站楼重排，旧的 `pending` 派工置为 `superseded` 并失去占用，已 `confirmed` 的归属和保障量照旧保留。也可由操作员在页面手动 `POST /mobile-dispatch/recompute`。
+- **并发确认**：重排与主管确认共用航站楼级事务咨询锁；确认时二次校验行仍为 `pending`，过期安排返回 409，不能确认。
+- **接口**：`GET/POST /mobile-dispatch/teams`、`POST /mobile-dispatch/teams/{id}/deactivate`、`GET /mobile-dispatch/board`、`POST /mobile-dispatch/recompute`、`POST /mobile-dispatch/allocations/{id}/confirm`。
+
+演示 seed 额外构造了两个同航站楼（T2）撞峰波次 `WAVE-AM-0615` / `WAVE-AM-0645`、三个 T2 机动班组（`FLEX-T2-A/B/C`）及就绪预测，并在启动时完成一次初始重排，可直接在页面看到缺口与派工。

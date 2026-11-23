@@ -6,6 +6,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from .casework_routes import router as operational_cases
 from .operations_evidence import router as operations_evidence
+from .mobile_dispatch_routes import router as mobile_dispatch
 from .auth import current_user, issue, password_hash, require
 from .db import audit, connect, migrate, wait_for_db
 from .schemas import Login, WaveIn, CountIn, ForecastIn, ShiftIn, ConfirmIn, ReviewIn
@@ -23,6 +24,7 @@ async def lifespan(_):
 app=FastAPI(title='机场行李带峰值预测', lifespan=lifespan)
 app.include_router(operational_cases)
 app.include_router(operations_evidence)
+app.include_router(mobile_dispatch)
 @app.middleware('http')
 async def guard(request: Request, call_next):
     started=time.monotonic()
